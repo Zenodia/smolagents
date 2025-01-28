@@ -46,6 +46,44 @@ Full documentation can be found [here](https://huggingface.co/docs/smolagents/in
 > [!NOTE]
 > Check the our [launch blog post](https://huggingface.co/blog/smolagents) to learn more about `smolagents`!
 
+## serving ollama models 
+![follow ollama-linux readme](https://github.com/ollama/ollama/blob/main/docs/linux.md)
+
+Note: you might need to do apt update -y before running the below command 
+
+```curl -fsSL https://ollama.com/install.sh | sh```
+
+```ollama serve ```
+
+afterwards find a model you want to use https://ollama.com/search
+then serve the model you choose , for example 
+
+```ollama run deepseek-coder-v2  ```
+
+
+verify it works vy using OpenAI
+``` python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url='http://localhost:11434/v1/',
+
+    # required but ignored
+    api_key='ollama',
+)
+
+chat_completion = client.chat.completions.create(
+    messages=[
+        {
+            'role': 'user',
+            'content': 'Say this is a test',
+        }
+    ],
+    model='deepseek-r1:8b',
+)
+chat_completion
+```
+
 ## Quick demo
 
 First install the package.
