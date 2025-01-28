@@ -27,7 +27,18 @@ A standard text-to-sql pipeline is brittle, since the generated SQL query can be
 
 Let’s build this agent! 💪
 
-First, we setup the SQL environment:
+Run the line below to install required dependencies:
+```bash
+!pip install smolagents python-dotenv sqlalchemy --upgrade -q
+```
+To call the HF Inference API, you will need a valid token as your environment variable `HF_TOKEN`.
+We use python-dotenv to load it.
+```py
+from dotenv import load_dotenv
+load_dotenv()
+```
+
+Then, we setup the SQL environment:
 ```py
 from sqlalchemy import (
     create_engine,
@@ -45,7 +56,12 @@ from sqlalchemy import (
 engine = create_engine("sqlite:///:memory:")
 metadata_obj = MetaData()
 
-# create city SQL table
+def insert_rows_into_table(rows, table, engine=engine):
+    for row in rows:
+        stmt = insert(table).values(**row)
+        with engine.begin() as connection:
+            connection.execute(stmt)
+
 table_name = "receipts"
 receipts = Table(
     table_name,
@@ -63,10 +79,7 @@ rows = [
     {"receipt_id": 3, "customer_name": "Woodrow Wilson", "price": 53.43, "tip": 5.43},
     {"receipt_id": 4, "customer_name": "Margaret James", "price": 21.11, "tip": 1.00},
 ]
-for row in rows:
-    stmt = insert(receipts).values(**row)
-    with engine.begin() as connection:
-        cursor = connection.execute(stmt)
+insert_rows_into_table(rows, receipts)
 ```
 
 ### Build our agent
@@ -124,7 +137,7 @@ Now let us create an agent that leverages this tool.
 
 We use the `CodeAgent`, which is smolagents’ main agent class: an agent that writes actions in code and can iterate on previous output according to the ReAct framework.
 
-The model is the LLM that powers the agent system. HfApiModel allows you to call LLMs using HF’s Inference API, either via Serverless or Dedicated endpoint, but you could also use any proprietary API.
+The model is the LLM that powers the agent system. `HfApiModel` allows you to call LLMs using HF’s Inference API, either via Serverless or Dedicated endpoint, but you could also use any proprietary API.
 
 ```py
 from smolagents import CodeAgent, HfApiModel
@@ -144,7 +157,7 @@ So let’s make a second table recording the names of waiters for each receipt_i
 
 ```py
 table_name = "waiters"
-receipts = Table(
+waiters = Table(
     table_name,
     metadata_obj,
     Column("receipt_id", Integer, primary_key=True),
@@ -158,10 +171,7 @@ rows = [
     {"receipt_id": 3, "waiter_name": "Michael Watts"},
     {"receipt_id": 4, "waiter_name": "Margaret James"},
 ]
-for row in rows:
-    stmt = insert(receipts).values(**row)
-    with engine.begin() as connection:
-        cursor = connection.execute(stmt)
+insert_rows_into_table(rows, waiters)
 ```
 Since we changed the table, we update the `SQLExecutorTool` with this table’s description to let the LLM properly leverage information from this table.
 
